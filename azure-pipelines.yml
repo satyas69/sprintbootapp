@@ -1,12 +1,18 @@
 
 trigger:
-- main
+  branches:
+    include:
+      - main
 
-resources:
-- repo: self
+pool:
+  vmImage: 'ubuntu-latest'
+
 
 variables:
+  imageName: 'springbootapp'
+  acrName: 'satyaacr.azurecr.io'
   tag: '$(Build.BuildId)'
+
 
 stages:
 - stage: Build
@@ -42,3 +48,46 @@ stages:
         artifactoryService: 'Art_SVC_conn'
         targetRepo: 'docker-local'
         imageName: '$(imageName):$(tag)'
+
+
+
+
+
+
+
+steps:
+
+# Step 1: Checkout code from GitHub
+- task: Checkout@1
+
+# Step 2: Set up Java (Maven + JDK 17)
+- task: UseJavaVersion@1
+  inputs:
+    versionSpec: '17'
+    jdkArchitecture: 'x64'
+    javaPackage: 'jdk'
+
+# Step 3: Build Spring Boot app using Maven
+- script: mvn clean package -DskipTests
+  displayName: 'Build with Maven'
+
+# Step 4: Docker build
+- task: Docker@2
+  displayName: 'Build Docker Image'
+  inputs:
+    containerRegistry: 'ACRConnection'
+    repository: '$(imageName)'
+    command: 'build'
+    Dockerfile: '**/Dockerfile'
+    tags: |
+      latest
+
+# Step 5: Docker push to ACR
+- task: Docker@2
+  displayName: 'Push Image to ACR'
+  inputs:
+    containerRegistry: 'ACRConnection'
+    repository: '$(imageName)'
+    command: 'push'
+    tags: |
+      latest
